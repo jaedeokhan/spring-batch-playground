@@ -1,0 +1,8 @@
+custom:
+  health-check:
+    enabled: true
+    servlet-uri: "/health-check"
+
+  test:
+    enabled: true
+    servlet-uri: "/test"
