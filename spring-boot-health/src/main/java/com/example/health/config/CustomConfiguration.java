@@ -25,24 +25,18 @@ public class CustomConfiguration {
             log.info("properties null");
         }
 
-        validateHealthCheck(properties.getHealthCheck());
+        logHealthCheck(properties.getHealthCheck());
 
-        validateTest(properties.getTest());
+        logTest(properties.getTest());
     }
 
 
-    private void validateHealthCheck(HealthCheck healthCheck) {
-        if (healthCheck == null) {
-            log.info("health check null");
-        }
+    private void logHealthCheck(HealthCheck healthCheck) {
         log.info("healthCheck.isEnabled() : {}", healthCheck.isEnabled());
         log.info("healthCheck.getServletUri() : {}", healthCheck.getServletUri());
     }
 
-    private void validateTest(Test test) {
-        if (test == null) {
-            log.info("test null");
-        }
+    private void logTest(Test test) {
         log.info("test.isEnabled() : {}", test.isEnabled());
         log.info("test.getServletUri() : {}", test.getServletUri());
     }
