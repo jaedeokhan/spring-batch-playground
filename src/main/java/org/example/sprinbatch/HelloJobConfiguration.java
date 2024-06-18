@@ -1,4 +1,4 @@
-package org.example.sprinbatch.sec02.hello;
+package org.example.sprinbatch;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
