@@ -1,4 +1,4 @@
-package org.example.sprinbatch.sec03.e03;
+package org.example.sprinbatch;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
