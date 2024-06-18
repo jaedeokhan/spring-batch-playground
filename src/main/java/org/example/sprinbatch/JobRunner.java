@@ -1,4 +1,4 @@
-package org.example.sprinbatch.sec03.e02;
+package org.example.sprinbatch;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
@@ -9,7 +9,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-//@Component
+@Component
 public class JobRunner implements ApplicationRunner {
 
     @Autowired
