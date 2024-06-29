@@ -15,7 +15,9 @@ spring:
       driver-class-name: org.h2.Driver
       username: sa
       password:
-
+  batch:
+    jdbc:
+      initialize-schema: embedded
 ---
 spring:
   config:
@@ -28,4 +30,5 @@ spring:
       username: root
       password: ${db.password}
   batch:
-    initialize-schema: NEVER
+    jdbc:
+      initialize-schema: always
