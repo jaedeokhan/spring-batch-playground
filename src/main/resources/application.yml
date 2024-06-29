@@ -1,9 +1,7 @@
 spring:
   profiles:
     active: mysql
-  batch:
-    job:
-      names: ${job.name:NONE}
+
 ---
 spring:
   config:
@@ -24,10 +22,8 @@ spring:
   datasource:
     hikari:
       jdbc-url: jdbc:mysql://localhost:3306/springbatch?useUnicode=true&characterEncoding=utf8
-      driver-class-name: com.mysql.jdbc.Driver
+      driver-class-name: com.mysql.cj.jdbc.Driver
       username: root
       password: ${db.password}
   batch:
-    initialize-schema: always
-#    job:
-#      enabled: false
+    initialize-schema: NEVER
