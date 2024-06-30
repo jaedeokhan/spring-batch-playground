@@ -28,4 +28,5 @@ spring:
       username: root
       password: ${db.password}
   batch:
-    initialize-schema: NEVER
+    jdbc:
+      initialize-schema: ALWAYS
