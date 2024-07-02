@@ -13,6 +13,8 @@ repositories {
 }
 
 dependencies {
+    // Aysnc - Online to Batch
+    implementation 'org.springframework.boot:spring-boot-starter-web:'
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'mysql:mysql-connector-java'
     implementation 'com.h2database:h2'
