@@ -30,3 +30,5 @@ spring:
   batch:
     jdbc:
       initialize-schema: ALWAYS
+    job:
+      enabled: false # 기본 jobLauncher 사용되지 않게 설정
