@@ -1,9 +1,7 @@
 spring:
   profiles:
     active: mysql
-#  batch:
-#    job:
-#      names: ${job.name:NONE}
+
 ---
 spring:
   config:
@@ -28,5 +26,8 @@ spring:
       username: root
       password: ${db.password}
   batch:
+    job:
+      names: ${job.name:NONE}
+      enabled: true # spring batch 자동 실행 false
     jdbc:
       initialize-schema: ALWAYS
