@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+// 현재 환경을 환경 변수나 시스템 속성으로 설정
+def env = project.hasProperty('env') ? project.property('env') : 'dev'
+
+// 환경별 properties 파일을 로드
+def propertiesFile = file("gradle-${env}.properties")
+
+// 파일이 존재하지 않으면 예외를 발생시켜 빌드를 중단
+if (!propertiesFile.exists()) {
+    throw new GradleException("Properties file for '${env}' not found")
+}
+
+logger.lifecycle("Load Current env : ${env}")
+
+// Properties 객체를 사용하여 파일을 로드
+def properties = new Properties()
+propertiesFile.withInputStream { stream ->
+    properties.load(stream)
+}
+
+// 로드한 각 속성을 project.ext에 추가
+properties.each { key, value ->
+    project.ext.set(key, value)
+}
+
+repositories {
+    //mavenCentral()
+    maven {
+        url "${nexusUrl}"
+        credentials {
+            username = "${nexusUsername}"
+            password = "${nexusPassword}"
+        }
+        allowInsecureProtocol = true // http 가능 설정
+    }
+}
+
+dependencies {
+    implementation 'org.apache.poi:poi:5.3.0@jar'
+}
+
+test {
+    useJUnitPlatform()
+}
