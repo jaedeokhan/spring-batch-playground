@@ -1,5 +1,38 @@
 # Spring Batch PlayGround
 
+## kill-spring-batch
+
+### plain spring batch와 spring boot batch
+plain spring batch에서는 기본적으로 DefaultBatchConfiguration을 상속해야하는 BatchConfig가 필요하다.
+Batch Config에서는 데이터 소스 설정이 필요하다.
+cmd, bash 커맨드에서 실행할 경우에는 mainClass 설정이 필요하다.
+
+1. spring-batch-core 라이브러리 필요
+2. DeafultBatchConfiguration 상속 및 데이터소스 구현 피요
+3. 커맨드 실행 시 mainClass 지정 필요
+
+```groovy
+application {
+    mainClass = 'org.springframework.batch.core.launch.support.CommandLineJobRunner'
+}
+```
+
+커맨드 실행 방법은 하단과 같다.
+
+```groovy
+./gradlew run --args="com.system.batch.config.SystemTerminationConfig systemTerminationSimulationJob"
+```
+
+spring boot batch에서는 별도 DefaultBatchConfiguration 상속은 필요없다.
+데이터 소스 설정도 필요없다.
+spring-boot-starter-batch가 자동으로 처리해준다.
+
+커맨드 실행 방법은 하단과 같고 plain과 다른점은 spring.batch.job.name 파라미터로 job 이름만 던져주면 된다.
+
+```groovy
+./gradlew bootRun --args='--spring.batch.job.name=systemTerminationSimulationJob'
+```
+
 ## sec03-03 JobParameter
 JobParameter의 실행 방법은 3가지가 있다.
 1. 애플리케이션 실행 시 주입
