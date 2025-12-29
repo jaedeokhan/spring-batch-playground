@@ -47,3 +47,13 @@ seq나 date 뒤에 (long), (date) 데이터 타입을 적어주지 않으면 실
 ```bash
 java -jar spring-batch-playground-1.0-SNAPSHOT.jar name=user2 seq\(long\)=3L date\(date\)=2024/06/18 age\(double\)=17.5
 ```
+
+## 5. 스프링 배치 두 가지 스텝 유형
+청크 지향 처리에 시퀀스 다이어그램에 대한 오해가 있었다.
+https://github.com/spring-projects/spring-batch/commit/3fbfbb95033c228a02d03c90d2bf0fe566b4e5f5
+chunk가 10개일 때 read->process가 순차적으로 10번 호출되는줄 알고 있었지만,
+사실은 read 10번 수행, process 10번 수행 후 write()에 던져주는 것이다..
+
+잘못된 흐름 : read() -> process() -> read() -> process -> ... write(lists) 
+정상 흐름 : read() -> read() ... -> process() -> process -> ... wirte(lists)
+
