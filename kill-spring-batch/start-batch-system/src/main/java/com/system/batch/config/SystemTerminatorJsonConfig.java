@@ -14,12 +14,14 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Slf4j
 @Configuration
 public class SystemTerminatorJsonConfig {
 
+    @Profile("json")
     @Bean
     public JobParametersConverter jobParametersConverter() {
         return new JsonJobParametersConverter();
