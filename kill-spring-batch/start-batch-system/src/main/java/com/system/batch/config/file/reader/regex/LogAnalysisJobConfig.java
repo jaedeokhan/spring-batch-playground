@@ -1,4 +1,4 @@
-package com.system.batch.config.file.regex;
+package com.system.batch.config.file.reader.regex;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
