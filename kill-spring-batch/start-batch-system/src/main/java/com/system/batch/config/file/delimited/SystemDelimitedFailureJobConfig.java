@@ -24,14 +24,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class SystemFailureJobConfig {
+public class SystemDelimitedFailureJobConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
 
     @Bean
-    public Job systemFailureJob(Step systemFailureStep) {
-        return new JobBuilder("systemFailureJob", jobRepository)
+    public Job systemDelimitedFailureJob(Step systemFailureStep) {
+        return new JobBuilder("systemDelimitedFailureJob", jobRepository)
                 .start(systemFailureStep)
                 .build();
     }
