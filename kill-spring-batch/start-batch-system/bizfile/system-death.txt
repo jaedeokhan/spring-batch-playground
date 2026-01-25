@@ -1,0 +1,4 @@
+command,cpu,status
+destroy,99,memory overflow
+explode,100,cpu meltdown
+collapse,95,disk burnout
