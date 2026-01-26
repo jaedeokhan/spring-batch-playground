@@ -73,3 +73,136 @@ ItemREader의 read() 메서드가 null을 반환할 때 Spring Batch가 모든 �
 
 #### 청크 사이즈가 작을 때
 트랜잭션 경계가 작아져서 문제 발생시 롤백 데이터 최소화, 그러나 읽기/쓰기 I/O가 자주 발생된다.
+
+## JobParameters
+
+배치 작업에 전달되는 입력값, 배치 잡을 유연하고 동적으로 사용하게 해주는 입력 파라미터이다.
+
+## 프로퍼티와 JobParameters의 차이점
+
+프로퍼티인(`-D`)의 경우에는 프로그램 로딩시에 한 번 가져가는 설정이다.
+
+웹 요청으로 들어올 때마다 비동기로 배치 Job을 실행하는 온라인 배치 앱이 있다면 프로퍼티로는 불가능하다.
+
+### JobParameters 기본 문법
+
+`parameterName=parameterValue,parameterType,identificationFlag`
+
+Ex) inputFilePath=/data/users.csv,java.lang.String
+
+- identificationFlag: Spring Batch에게 해당 파라미터가 JobInstance 식별에 사용될 파라미터인지 여부를 전달하는 값으로 true이면 식별에 사용된다는 의미
+
+### JobParameters 구현체
+
+[DefaultJobParametersConverter](https://docs.spring.io/spring-batch/docs/current/api/org/springframework/batch/core/converter/DefaultJobParametersConverter.html)와 [DefaultConversionService](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/core/convert/support/DefaultConversionService.html)의 javadoc을 참고
+
+### 기본적인 String, Integer 파라미터 실행방법
+
+```bash
+    @Bean
+    @StepScope
+    public Tasklet terminatorTasklet(
+            @Value("#{jobParameters['terminatorId']}") String terminatorId,
+            @Value("#{jobParameters['targetCount']}") Integer targetCount
+    ) {
+        return (contribution, chunkContext) -> {
+            log.info("시스템 종결자 정보:");
+            log.info("ID: {}", terminatorId);
+            log.info("제거 대상 수: {}", targetCount);
+            log.info("⚡ SYSTEM TERMINATOR {} 작전을 개시합니다.", terminatorId);
+            log.info("☠️ {}개의 프로세스를 종료합니다.", targetCount);
+
+            for (int i = 1; i <= targetCount; i++) {
+                log.info("💀 프로세스 {} 종료 완료!", i);
+            }
+
+            log.info("🎯 임무 완료: 모든 대상 프로세스가 종료되었습니다.");
+            return RepeatStatus.FINISHED;
+        };
+    }
+```
+
+```bash
+./gradlew bootRun --args='--spring.batch.job.name=processTerminatorWithParamJob terminatorId=KILL-9,java.lang.String targetCount=5,java.lang.Integer
+```
+
+### LocalDate와 LocalDateTime 파라미터 실행방법
+
+- 한 가지 주의점은 날짜 타입의 경우에는 ISO 표준 형식으로 전달해야 한다.
+    - [java.util.Date](http://java.util.Date) → ISO_INSTANT
+    - java.time.LocalTime → ISO_LOCAL_TIME
+
+```bash
+    @Bean
+    @StepScope
+    public Tasklet terminatorWithParamTasklet(
+            @Value("#{jobParameters['executionDate']}") LocalDate executionDate,
+            @Value("#{jobParameters['startTime']}") LocalDateTime startTime
+    ) {
+        return (contribution, chunkContext) -> {
+            log.info("시스템 처형 정보");
+            log.info("처형 예정일: {}", executionDate.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")));
+            log.info("작전 개시 시각: {}", startTime.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분 ss초")));
+            log.info("⚡ {}에 예정된 시스템 정리 작전을 개시합니다.", executionDate);
+            log.info("💀 작전 시작 시각: {}", startTime);
+
+            LocalDateTime currentTime = startTime;
+            for (int i = 0; i <= 3; i++) {
+                currentTime = currentTime.plusHours(1);
+                log.info("☠️ 시스템 정리 {}시간 경과... 현재 시각:{}", i, currentTime.format(DateTimeFormatter.ofPattern("HH시 mm분")));
+            }
+
+            log.info("🎯 임무 완료: 모든 대상 시스템이 성공적으로 제거되었습니다.");
+            log.info("⚡ 작전 종료 시각: {}", currentTime.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분 ss초")));
+
+            return RepeatStatus.FINISHED;
+        };
+    }
+```
+
+```bash
+./gradlew bootRun --args='--spring.batch.job.name=processTerminatorWithParamJob executionDate=2026-01-14,java.time.LocalDate startTime=2026-01-14T14:30:00,java.time.LocalDateTime'
+```
+
+### Enum 타입의 파라미터 실행방법
+
+- Enum의 경우에는 해당 객체를 바로 사용하면 된다.
+
+```bash
+    @Bean
+    @StepScope
+    public Tasklet terminatorWithEnumParamTasklet(
+            @Value("#{jobParameters['questDifficulty']}") QuestDifficulty questDifficulty
+    ) {
+        return (contribution, chunkContext) -> {
+            log.info("⚔️ 시스템 침투 작전 개시!");
+            log.info("임무 난이도: {}", questDifficulty);
+            // 난이도에 따른 보상 계산
+            int baseReward = 100;
+            int rewardMultiplier = switch (questDifficulty) {
+                case EASY -> 1;
+                case NORMAL -> 2;
+                case HARD -> 3;
+                case EXTREME -> 5;
+            };
+            int totalReward = baseReward * rewardMultiplier;
+            log.info("💥 시스템 해킹 진행 중...");
+            log.info("🏆 시스템 장악 완료!");
+            log.info("💰 획득한 시스템 리소스: {} 메가바이트", totalReward);
+            return RepeatStatus.FINISHED;
+        };
+    }
+```
+
+```bash
+./gradlew bootRun --args='--spring.batch.job.name=processTerminatorWithEnumParamJob questDifficulty=HARD,com.system.batch.QuestDifficulty'
+```
+
+## Chunked Diagram
+Chunked의 흐름을 데이터가 10개일 때 read() -> process()가 10번 반복되서 수행되는줄 아는 사람이 많다.
+실제로는 read() -> 10번 -> process() -> 10번 -> write()와 같이 수행된다.
+https://github.com/spring-projects/spring-batch/commit/3fbfbb95033c228a02d03c90d2bf0fe566b4e5f5
+
+```bash
+./gradlew bootRun --args='--spring.batch.job.name=chunkedOrderJob'
+```
