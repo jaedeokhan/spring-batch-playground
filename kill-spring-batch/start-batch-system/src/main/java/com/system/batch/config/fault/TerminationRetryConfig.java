@@ -47,6 +47,7 @@ public class TerminationRetryConfig {
                 .retry(TerminationFailedException.class)
                 .retryLimit(3)
                 .listener(retryListener())
+                .processorNonTransactional() // ItemProcessor 비트랜잭션 처리
                 .build();
     }
 
