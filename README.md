@@ -206,3 +206,92 @@ https://github.com/spring-projects/spring-batch/commit/3fbfbb95033c228a02d03c90d
 ```bash
 ./gradlew bootRun --args='--spring.batch.job.name=chunkedOrderJob'
 ```
+
+## Chunk FaultTolerant(내결함성)
+스프링 배치는 내결함성(FaultTolerance) 기능을 제공한다.
+재시도(Retry)와 건너뛰기(Skip)로 `청크 지향 처리`에서만 사용 가능하다.
+`테스크릿 지향 처리`는 Spring Batch 내결함성(FaultTolerance) 기능 지원 대상이 아니다.
+
+태스크릿 지향 처리에서는 Tasklet.execute() 메서드 하나만 사용한다.
+따라서 해당 메서드에서 try-catch를 사용해 발생 가능한 예외를 원하는 대로 처리 가능하다.
+
+### RetryTemplate
+RetryTemplate은 Spring Retry 프로젝트의 컴포넌트로, `작업이 실패하면 정해진 정책에 따라 다시 시도` 하는 컴포넌트이다.
+- RetryTemplate.execute()
+    - canRetry()?
+	     - Y, retryCallabck
+		 - N, recoveryCallback
+
+- canRetry()는 재시도 가능여부 판단한다. 사전에 정해진 재시도 정책(RetryPolicy)을 기반으로 작업을 다시 시도해도 되는가를 결정한다.
+- retryCllback()은 핵심 로직 실행이다. 재시도가 가능하다고 판단되면 retryCallback을 호출한다.
+   - 핵심 비지니스 로직이 담겨있고, 중요한 점은 이 콜백이 재시도만을 위한 것이 아니라 최초 실행부터 재시도까지 모든 시도가 이 retryCallback을 통해 수행된다.
+- recoveryCallback은 최후의 수단으로 더 이상 재시도는 불가능할 때 호출된다. 최후로 발생한 예외를 그대로 전파거나 대체 로직을 수행한다.
+
+
+### RetryPolicy 
+RetryPolicy는 재시도 정책을 사용해 재시도 가능 여부를 결정한다.
+별도 설정이 없을 경우 Spring Batch의 내결함성 기능은 `SimpleRetryPolicy`라는 재시도 정책을 사용한다.
+SimpleRetryPolicy는 다음의 두 조건을 바탕으로 재시도 가능 여부를 결정한다.
+1. 발생한 예외가 사전에 지정된 예외 유형에 해당하는가.
+2. 현재 재시도 횟수가 최대 허용 횟수를 초과하지 않았는가.
+
+### ItemReader는 재시도 따위는 없다ㄷㄷ
+ItemReader는 재시도 기능의 보호 대상이 아니다.
+ItemReader에서 발생한 예외는 재시도되지 않는다.
+
+이유는 Spring Batch는 mutable한 데이터소스로부터 데이터를 읽는 상황까지 고려했기 때문이다.
+읽으면 데이터가 사라지는 데이터 소스인 메시지 큐(RabbitMQ, SQS 등)을 고려한 것이다.
+이미 사라진 데이터를 다시 읽을 수 없기에 ItemReader는 재시도하지 않는다.
+`Spring Batch 6` 부터는 메시지 큐를 사용하는 예외적인 경우를 위해서 제한하는 맞지 않다고 생각해서 ItemReader에서 재시도 기능을 제공한다.
+
+ItemReader의 기본 규약은 `forward only` 방식이다.
+즉, 데이터를 단방향으로만 순차적으로 읽어나가는 것이 기본 원칙이다.
+과거로 되돌아가 아이템을 다시 읽는 것은 ItemReader의 기본 설계 원칙에 위배된다.
+
+그러면 어떻게 매번 재시도마다 Input Chunk를 전달 할 수 있을까?
+
+정답은 내결함성 기능의 청크 버퍼링이다.
+스프링 배치에서는 내결함성 기능을 활성화한 경우 ItemReader가 읽어들인 Input Chunk를 별도로 저장해준다.
+덕분에 재시도가 필요할 때는 ItemReader를 되감지 않고도 이미 읽어둔 Chunk를 그대로 재사용하여 처리할 수 있다.
+
+스프링 배치에서 내결함성 기능을 활성화하기 위해서는 faultTolerant()를 호출해야한다.
+내결함성 기능을 사용하겠다고 명시하는 것이다.
+
+SimpleRetryPolicy에서 사용할 `재시도 대상 예외 - retry()`, `재시도 대상 지정 - retryLimit()`을 선언한다.
+retryLimit은 첫 번째 retryCallback 호출 1번이 포함되기에 실제 허용 가능한 재시도 횟수는 항상 retryLimit - 1이다.
+
+listener()는 재시도 과정을 모니터링 가능하게 RetryListener를 설정 가능하다.
+
+```java
+    @Bean
+    public Step terminationRetryStep() {
+        return new StepBuilder("terminationRetryStep", jobRepository)
+                .<Scream, Scream>chunk(3, transactionManager)
+                .reader(terminationRetryReader())
+                .processor(terminationRetryProcessor())
+                .writer(terminationRetryWriter())
+                .faultTolerant()
+                .retry(TerminationFailedException.class)
+                .retryLimit(3)
+                .listener(retryListener())
+                .build();
+    }
+```
+
+### Retry - ItemProcessor => 재시도 횟수 item별
+ItemProcessor와 ItemWriter에서의 재시도는 다른 방식으로 동작한다.
+
+ItemProcessor에서의 재시도는 `아이템 단위로 재시도 컨텍서트가 관리된다.`
+스프링 배치에서는 각 item 별로 얼마나 재시도했는지 따로따로 기록한다.
+청크 전체가 다시 처리되지만, 재시도 횟수는 아이템 단위로 개별 관리된다.
+
+이미 성공한 아이템들을 매번 다시 process()를 호출하는건 비효율적이라고 생각이 들면? 방법이 있다.
+processorNonTransactional()를 사용하면 ItemProcessor를 비트랜잭션 상태로 표시하여 한 번 처리된 아이템의 결과를 캐시에 저장하낟.
+즉, 실패한 아이템들에 대해서만 process()를 탄다.
+
+### Retry - ItemWriter => 재시도 횟수 Chunk
+ItemWriter에서 예외 발생 시 재시도 - 청크 단위로 재시도 관리
+1. ItemWriter에서 예외 발생 시 ItemProcessor부터 처리가 재개된다.
+2. ItemProcessor에서와 달리, ItemWriter에서의 재시도 횟수는 청크 단위로 관리된다.
+
+
